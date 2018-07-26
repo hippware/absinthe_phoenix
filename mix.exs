@@ -42,7 +42,8 @@ defmodule Absinthe.Phoenix.Mixfile do
   defp deps do
     [
       {:absinthe_plug, "~> 1.4.0"},
-      {:absinthe, "~> 1.4.0 or ~> 1.5.0-alpha.0"},
+      #{:absinthe, "~> 1.4.0 or ~> 1.5.0-alpha.0"},
+      {:absinthe, github: "hippware/absinthe", branch: "defer-directive", override: true},
       {:decimal, "~> 1.0"},
       {:phoenix, "~> 1.2"},
       {:phoenix_pubsub, "~> 1.0"},
