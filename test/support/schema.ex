@@ -52,10 +52,11 @@ defmodule Schema do
         {:ok, users}
       end
     end
-    field :slow_field, :slow_field do
-      arg :delay, non_null(:integer)
+
+    field :slow_fields, list_of(:slow_field) do
+      arg :delays, list_of(non_null(:integer))
       resolve fn _, args, _ ->
-        {:ok, %{value: args.delay}}
+        {:ok, Enum.map(args[:delays], &(%{value: &1}))}
       end
     end
   end
@@ -102,6 +103,21 @@ defmodule Schema do
     field :errors, :comment do
       config fn _, _ ->
         {:error, "unauthorized"}
+      end
+    end
+
+    field :catchup, :string do
+      config fn _, %{context: %{pubsub: pubsub}} ->
+        {:ok, topic: "catchup_topic", catchup: fn ->
+          Enum.each(["catchup1", "catchup2"],
+            fn val ->
+              Absinthe.Subscription.publish(
+                pubsub,
+                val,
+                [catchup: "catchup_topic"])
+            :ok
+            end)
+        end}
       end
     end
   end

@@ -74,6 +74,15 @@ defmodule Absinthe.Phoenix.Channel do
           socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
           {{:ok, %{subscriptionId: topic}}, socket}
 
+        {:more, %{"subscribed" => topic}, continuation, context} ->
+          :ok = Phoenix.PubSub.subscribe(socket.pubsub_server, topic, [
+            fastlane: {socket.transport_pid, socket.serializer, []},
+            link: true,
+          ])
+          socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
+          {:ok, %{}} = Absinthe.continue(continuation)
+          {{:ok, %{subscriptionId: topic}}, socket}
+
         {:ok, %{data: _} = reply, context} ->
           socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
           {{:ok, reply}, socket}
@@ -121,6 +130,10 @@ defmodule Absinthe.Phoenix.Channel do
   def handle_info({:DOWN, ref, :process, _pid, _reason}, socket) do
     procs = List.delete(socket.assigns.async_procs, ref)
     {:noreply, assign(socket, :async_procs, procs)}
+  end
+
+  def handle_info(_, socket) do
+    {:noreply, socket}
   end
 
   defp run(document, schema, pipeline, options) do
