@@ -91,6 +91,21 @@ defmodule Absinthe.PhoenixTest do
     assert String.contains?(log, "boom")
   end
 
+  test "subcription with catchup", %{socket: socket} do
+    ref = push socket, "doc", %{
+      "query" => "subscription { catchup }"
+    }
+    assert_reply ref, :ok, %{subscriptionId: subscription_ref}
+
+    assert_push "subscription:data", push
+    expected = %{result: %{data: "catchup1"}, subscriptionId: subscription_ref}
+    assert expected == push
+
+    assert_push "subscription:data", push
+    expected = %{result: %{data: "catchup2"}, subscriptionId: subscription_ref}
+    assert expected == push
+  end
+
   test "context changes are persisted across documents", %{socket: socket} do
     ref = push socket, "doc", %{
       "query" => "{me { name }}"

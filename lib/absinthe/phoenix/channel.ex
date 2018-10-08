@@ -61,11 +61,22 @@ defmodule Absinthe.Phoenix.Channel do
 
     {reply, socket} = case run(query, config.schema, pipeline, opts) do
       {:ok, %{"subscribed" => topic}, context} ->
+        IO.inspect "NORMAL"
         :ok = Phoenix.PubSub.subscribe(socket.pubsub_server, topic, [
           fastlane: {socket.transport_pid, socket.serializer, []},
           link: true,
         ])
         socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
+        {{:ok, %{subscriptionId: topic}}, socket}
+
+      {:more, %{"subscribed" => topic}, continuation, context} ->
+        IO.inspect "CONTINUATION"
+        :ok = Phoenix.PubSub.subscribe(socket.pubsub_server, topic, [
+          fastlane: {socket.transport_pid, socket.serializer, []},
+          link: true,
+        ])
+        socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
+        handle_subscription_continuation(continuation, topic, socket)
         {{:ok, %{subscriptionId: topic}}, socket}
 
       {:ok, %{data: _} = reply, context} ->
@@ -167,6 +178,11 @@ defmodule Absinthe.Phoenix.Channel do
       {:error, msg, _phases} ->
         push socket, "doc", add_query_id(msg, id)
     end
+  end
+
+  defp handle_subscription_continuation(continuation, topic, socket) do
+    {:ok, %{data: data, topic: ^topic}} = Absinthe.continue(continuation)
+    Enum.each(data, &Phoenix.PubSub.broadcast(socket.pubsub_server, topic, &1))
   end
 
   defp new_query_id,

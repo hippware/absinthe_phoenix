@@ -84,5 +84,11 @@ defmodule Schema do
         {:error, "unauthorized"}
       end
     end
+
+    field :catchup, :string do
+      config fn _, _ ->
+        {:ok, topic: "", catchup: fn -> {:ok, ["catchup1", "catchup2"]} end}
+      end
+    end
   end
 end
