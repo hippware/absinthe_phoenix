@@ -61,7 +61,6 @@ defmodule Absinthe.Phoenix.Channel do
 
     {reply, socket} = case run(query, config.schema, pipeline, opts) do
       {:ok, %{"subscribed" => topic}, context} ->
-        IO.inspect "NORMAL"
         :ok = Phoenix.PubSub.subscribe(socket.pubsub_server, topic, [
           fastlane: {socket.transport_pid, socket.serializer, []},
           link: true,
@@ -70,7 +69,6 @@ defmodule Absinthe.Phoenix.Channel do
         {{:ok, %{subscriptionId: topic}}, socket}
 
       {:more, %{"subscribed" => topic}, continuation, context} ->
-        IO.inspect "CONTINUATION"
         :ok = Phoenix.PubSub.subscribe(socket.pubsub_server, topic, [
           fastlane: {socket.transport_pid, socket.serializer, []},
           link: true,
