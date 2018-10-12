@@ -93,16 +93,16 @@ defmodule Absinthe.PhoenixTest do
 
   test "subcription with catchup", %{socket: socket} do
     ref = push socket, "doc", %{
-      "query" => "subscription { catchup }"
+      "query" => "subscription { catchup { contents } }"
     }
     assert_reply ref, :ok, %{subscriptionId: subscription_ref}
 
     assert_push "subscription:data", push
-    expected = %{result: %{data: "catchup1"}, subscriptionId: subscription_ref}
+    expected = %{result: %{data: %{"contents" => "catchup1"}}, subscriptionId: subscription_ref}
     assert expected == push
 
     assert_push "subscription:data", push
-    expected = %{result: %{data: "catchup2"}, subscriptionId: subscription_ref}
+    expected = %{result: %{data: %{"contents" => "catchup2"}}, subscriptionId: subscription_ref}
     assert expected == push
   end
 

@@ -85,9 +85,10 @@ defmodule Schema do
       end
     end
 
-    field :catchup, :string do
+    field :catchup, :comment do
       config fn _, _ ->
-        {:ok, topic: "", catchup: fn -> {:ok, ["catchup1", "catchup2"]} end}
+        {:ok, topic: "", catchup: fn -> {:ok, [%{"contents" => "catchup1"},
+                                               %{"contents" => "catchup2"}]} end}
       end
     end
   end
