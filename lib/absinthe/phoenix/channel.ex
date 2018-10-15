@@ -74,7 +74,7 @@ defmodule Absinthe.Phoenix.Channel do
           link: true,
         ])
         socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
-        handle_subscription_continuation(continuation, topic, socket)
+        {:ok, _} = Absinthe.continue(continuation)
         {{:ok, %{subscriptionId: topic}}, socket}
 
       {:ok, %{data: _} = reply, context} ->
@@ -176,23 +176,6 @@ defmodule Absinthe.Phoenix.Channel do
       {:error, msg, _phases} ->
         push socket, "doc", add_query_id(msg, id)
     end
-  end
-
-  defp handle_subscription_continuation(continuation, topic, socket) do
-    {:ok, %{data: data, topic: ^topic}} = Absinthe.continue(continuation)
-    Enum.each(data, &broadcast_catchup(socket, topic, &1))
-  end
-
-  defp broadcast_catchup(%{pubsub_server: pubsub}, topic, data) do
-    broadcast = %Phoenix.Socket.Broadcast{
-      topic: topic,
-      event: "subscription:data",
-      payload: %{result: %{data: data}, subscriptionId: topic},
-    }
-
-    pubsub
-    |> Phoenix.PubSub.node_name()
-    |> Phoenix.PubSub.direct_broadcast(pubsub, topic, broadcast)
   end
 
   defp new_query_id,
