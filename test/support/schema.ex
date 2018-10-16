@@ -85,10 +85,18 @@ defmodule Schema do
       end
     end
 
-    field :catchup, :comment do
-      config fn _, _ ->
-        {:ok, topic: "", catchup: fn -> {:ok, [%{"contents" => "catchup1", "other_stuff" => "not-requested"},
-                                               %{"contents" => "catchup2"}]} end}
+    field :catchup, :string do
+      config fn _, %{context: %{pubsub: pubsub}} ->
+        {:ok, topic: "catchup_topic", catchup: fn ->
+          Enum.each(["catchup1", "catchup2"],
+            fn val ->
+              Absinthe.Subscription.publish(
+                pubsub,
+                val,
+                [catchup: "catchup_topic"])
+            :ok
+            end)
+        end}
       end
     end
   end

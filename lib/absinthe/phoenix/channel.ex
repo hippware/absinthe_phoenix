@@ -74,7 +74,7 @@ defmodule Absinthe.Phoenix.Channel do
           link: true,
         ])
         socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
-        {:ok, _} = Absinthe.continue(continuation)
+        {:ok, %{}} = Absinthe.continue(continuation)
         {{:ok, %{subscriptionId: topic}}, socket}
 
       {:ok, %{data: _} = reply, context} ->
