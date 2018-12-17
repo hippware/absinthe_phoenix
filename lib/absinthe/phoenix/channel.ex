@@ -126,6 +126,10 @@ defmodule Absinthe.Phoenix.Channel do
     {:noreply, assign(socket, :async_procs, procs)}
   end
 
+  def handle_info(_, socket) do
+    {:noreply, socket}
+  end
+
   defp run(document, schema, pipeline, options) do
     {module, fun} = pipeline
     case Absinthe.Pipeline.run(document, apply(module, fun, [schema, options])) do
