@@ -109,14 +109,7 @@ defmodule Schema do
     field :catchup, :string do
       config fn _, %{context: %{pubsub: pubsub}} ->
         {:ok, topic: "catchup_topic", catchup: fn ->
-          Enum.each(["catchup1", "catchup2"],
-            fn val ->
-              Absinthe.Subscription.publish(
-                pubsub,
-                val,
-                [catchup: "catchup_topic"])
-            :ok
-            end)
+          {:ok, ["catchup1", "catchup2"]}
         end}
       end
     end

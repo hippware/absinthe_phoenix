@@ -203,10 +203,10 @@ defmodule Absinthe.Phoenix.Channel do
   defp add_query_id(result, id), do: Map.put(result, :queryId, id)
 
   defp handle_subscription_continuation(continuation, topic, socket) do
-    {more, %{result: result}, _phases} = Absinthe.Pipeline.continue(continuation)
+    {:ok, %{result: result}, _phases} = Absinthe.Pipeline.continue(continuation)
     push_subscription_item(result.data, topic, socket)
 
-    if more == :more do
+    if result.continuation do
       handle_subscription_continuation(result.continuation, topic, socket)
     else
       :ok
