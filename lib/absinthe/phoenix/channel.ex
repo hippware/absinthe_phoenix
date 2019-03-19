@@ -206,10 +206,9 @@ defmodule Absinthe.Phoenix.Channel do
     {:ok, %{result: result}, _phases} = Absinthe.Pipeline.continue(continuation)
     push_subscription_item(result.data, topic, socket)
 
-    if result.continuation do
-      handle_subscription_continuation(result.continuation, topic, socket)
-    else
-      :ok
+    case result[:continuation] do
+      nil -> :ok
+      c -> handle_subscription_continuation(c, topic, socket)
     end
   end
 
