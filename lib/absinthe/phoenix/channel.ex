@@ -75,13 +75,17 @@ defmodule Absinthe.Phoenix.Channel do
           {{:ok, %{subscriptionId: topic}}, socket}
 
         {:more, %{"subscribed" => topic}, continuation, context} ->
+          socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
+          reply(socket_ref(socket), {:ok, %{subscriptionId: topic}})
+
           :ok = Phoenix.PubSub.subscribe(socket.pubsub_server, topic, [
             fastlane: {socket.transport_pid, socket.serializer, []},
             link: true,
           ])
-          socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
-          {:ok, %{}} = Absinthe.continue(continuation)
-          {{:ok, %{subscriptionId: topic}}, socket}
+
+          handle_subscription_continuation(continuation, topic, socket)
+
+          {:noreply, socket}
 
         {:ok, %{data: _} = reply, context} ->
           socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
@@ -111,7 +115,11 @@ defmodule Absinthe.Phoenix.Channel do
       """
     end)
 
-    {:reply, reply, socket}
+    if reply != :noreply do
+      {:reply, reply, socket}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_in("unsubscribe", %{"subscriptionId" => doc_id}, socket) do
@@ -193,4 +201,26 @@ defmodule Absinthe.Phoenix.Channel do
     do: "absinthe_query:" <> to_string(:erlang.unique_integer([:positive]))
 
   defp add_query_id(result, id), do: Map.put(result, :queryId, id)
+
+  defp handle_subscription_continuation(continuation, topic, socket) do
+    {more, %{result: result}, _phases} = Absinthe.Pipeline.continue(continuation)
+    push_subscription_item(result.data, topic, socket)
+
+    if more == :more do
+      handle_subscription_continuation(result.continuation, topic, socket)
+    else
+      :ok
+    end
+  end
+
+  defp push_subscription_item(data, topic, socket) do
+    msg = %Phoenix.Socket.Broadcast{
+      topic: topic,
+      event: "subscription:data",
+      payload: %{result: %{data: data}, subscriptionId: topic}
+    }
+    |> socket.serializer.fastlane!()
+
+    send(socket.transport_pid, msg)
+  end
 end
