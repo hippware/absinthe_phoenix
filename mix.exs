@@ -1,7 +1,7 @@
 defmodule Absinthe.Phoenix.Mixfile do
   use Mix.Project
 
-  @version "1.4.3"
+  @version "1.5.0-alpha.0"
 
   def project do
     [
@@ -26,7 +26,8 @@ defmodule Absinthe.Phoenix.Mixfile do
       licenses: ["MIT"],
       links: %{
         Website: "https://absinthe-graphql.org",
-        Changelog: "https://github.com/absinthe-graphql/absinthe_phoenix/blob/master/CHANGELOG.md",
+        Changelog:
+          "https://github.com/absinthe-graphql/absinthe_phoenix/blob/master/CHANGELOG.md",
         GitHub: "https://github.com/absinthe-graphql/absinthe_phoenix"
       }
     ]
@@ -41,13 +42,12 @@ defmodule Absinthe.Phoenix.Mixfile do
 
   defp deps do
     [
-      {:absinthe_plug, "~> 1.4.0"},
-      #{:absinthe, "~> 1.4.0 or ~> 1.5.0-alpha.0"},
+      {:absinthe_plug, "~> 1.5.0-alpha.0"},
       {:absinthe, github: "hippware/absinthe", branch: "subscription-catchup", override: true},
       {:decimal, "~> 1.0"},
-      {:phoenix, "~> 1.2"},
+      {:phoenix, "~> 1.4"},
       {:phoenix_pubsub, "~> 1.0"},
-      {:phoenix_html, "~> 2.10.5 or ~> 2.11", optional: true},
+      {:phoenix_html, "~> 2.13", optional: true},
       {:ex_doc, "~> 0.14", only: :dev},
       {:jason, "~> 1.0", only: [:dev, :test]}
     ]

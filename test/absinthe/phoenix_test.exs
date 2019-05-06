@@ -14,7 +14,7 @@ defmodule Absinthe.PhoenixTest do
 
   setup do
     {:ok, _, socket} =
-      socket(nil, absinthe: %{schema: Schema, opts: []})
+      socket(Absinthe.Phoenix.TestSocket, nil, absinthe: %{schema: Schema, opts: []})
       |> subscribe_and_join(Absinthe.Phoenix.Channel, "__absinthe__:control")
 
     {:ok, socket: socket}
@@ -44,7 +44,7 @@ defmodule Absinthe.PhoenixTest do
     expected = %{
       errors: [
         %{
-          locations: [%{column: 0, line: 1}],
+          locations: [%{column: 10, line: 1}],
           message: "Cannot query field \"errorField\" on type \"User\"."
         }
       ]
@@ -64,7 +64,7 @@ defmodule Absinthe.PhoenixTest do
     expected = %{
       errors: [
         %{
-          locations: [%{column: 0, line: 1}],
+          locations: [%{column: 30, line: 1}],
           message: "Cannot query field \"errorField\" on type \"Comment\"."
         }
       ]
@@ -183,7 +183,7 @@ defmodule Absinthe.PhoenixTest do
 
     assert_reply(ref, :error, reply)
 
-    assert reply == %{errors: [%{locations: [%{column: 0, line: 1}], message: "unauthorized"}]}
+    assert reply == %{errors: [%{locations: [%{column: 15, line: 1}], message: "unauthorized"}]}
   end
 
   test "can't do multiple fields on a subscription root", %{socket: socket} do
@@ -197,10 +197,38 @@ defmodule Absinthe.PhoenixTest do
     assert reply == %{
              errors: [
                %{
-                 locations: [],
+                 locations: [%{column: 1, line: 1}],
                  message: "Only one field is permitted on the root object when subscribing"
                }
              ]
+           }
+  end
+
+  test "valid variables succeed", %{socket: socket} do
+    ref =
+      push(socket, "doc", %{
+        "query" => "mutation ($val: Int) {mutate (val: $val)}",
+        "variables" => %{val: 5}
+      })
+
+    assert_reply(ref, :ok, reply)
+
+    assert reply == %{
+             data: %{"mutate" => 5}
+           }
+  end
+
+  test "inavlid variables returns error", %{socket: socket} do
+    ref =
+      push(socket, "doc", %{
+        "query" => "mutation ($val: Int) {mutate (val: $val)}",
+        "variables" => [val: 5]
+      })
+
+    assert_reply(ref, :error, reply)
+
+    assert reply == %{
+             error: "Could not parse variables as map"
            }
   end
 

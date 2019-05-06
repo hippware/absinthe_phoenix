@@ -11,7 +11,7 @@ defmodule Absinthe.AsyncTest do
   end
 
   test "defer sync" do
-    socket = socket(0)
+    socket = get_socket(0)
     query = %{"query" => "query { slow_fields (delays: [400]) { value @defer } }"}
     ref = push(socket, "doc", query)
     refute_reply(ref, _, _, 200)
@@ -33,7 +33,7 @@ defmodule Absinthe.AsyncTest do
   end
 
   test "repeated async defers" do
-    socket = socket(2)
+    socket = get_socket(2)
 
     # Run the test multiple times to ensure that completed async tasks are
     # cleaned up and don't prevent subsequent queries being handled
@@ -59,7 +59,7 @@ defmodule Absinthe.AsyncTest do
     end)
   end
 
-  defp socket(max_async_procs) do
+  defp get_socket(max_async_procs) do
     {:ok, _, socket} =
       "asdf"
       |> socket(

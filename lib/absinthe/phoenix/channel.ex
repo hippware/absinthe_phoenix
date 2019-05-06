@@ -45,80 +45,35 @@ defmodule Absinthe.Phoenix.Channel do
   def handle_in("doc", payload, socket) do
     config = socket.assigns[:absinthe]
 
-    opts =
-      config.opts
-      |> Keyword.put(:variables, Map.get(payload, "variables", %{}))
+    with variables when is_map(variables) <- Map.get(payload, "variables", %{}) do
+      opts = Keyword.put(config.opts, :variables, variables)
 
-    query = Map.get(payload, "query", "")
+      query = Map.get(payload, "query", "")
 
-    Absinthe.Logger.log_run(:debug, {
-      query,
-      config.schema,
-      [],
-      opts
-    })
+      Absinthe.Logger.log_run(:debug, {
+        query,
+        config.schema,
+        [],
+        opts
+      })
 
-    pipeline = Map.get(config, :pipeline)
+      {reply, socket} = run_doc(socket, query, config, opts)
 
-    {reply, socket} =
-      case run(query, config.schema, pipeline, opts) do
-        {:ok, %{"subscribed" => topic}, context} ->
-          :ok =
-            Phoenix.PubSub.subscribe(
-              socket.pubsub_server,
-              topic,
-              fastlane: {socket.transport_pid, socket.serializer, []},
-              link: true
-            )
+      Logger.debug(fn ->
+        """
+        -- Absinthe Phoenix Reply --
+        #{inspect(reply)}
+        ----------------------------
+        """
+      end)
 
-          socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
-          {{:ok, %{subscriptionId: topic}}, socket}
-
-        {:more, %{"subscribed" => topic}, continuation, context} ->
-          socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
-          reply(socket_ref(socket), {:ok, %{subscriptionId: topic}})
-
-          :ok = Phoenix.PubSub.subscribe(socket.pubsub_server, topic, [
-            fastlane: {socket.transport_pid, socket.serializer, []},
-            link: true,
-          ])
-
-          handle_subscription_continuation(continuation, topic, socket)
-
-          {:noreply, socket}
-
-        {:ok, %{data: _} = reply, context} ->
-          socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
-          {{:ok, reply}, socket}
-
-        {:ok, %{errors: _} = reply, context} ->
-          socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
-          {{:error, reply}, socket}
-
-        {:more, %{data: _} = reply, continuation, context} ->
-          socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
-
-          id = new_query_id()
-          socket = handle_continuation(continuation, id, socket)
-
-          {{:ok, add_query_id(reply, id)}, socket}
-
-        {:error, reply} ->
-          {reply, socket}
+      if reply != :noreply do
+        {:reply, reply, socket}
+      else
+        {:noreply, socket}
       end
-
-    Logger.debug(fn ->
-      """
-      -- Absinthe Phoenix Reply --
-      #{inspect(reply)}
-      ----------------------------
-      """
-    end)
-
-    if reply != :noreply do
-      {:reply, reply, socket}
     else
-      {:noreply, socket}
+      _ -> {:reply, {:error, %{error: "Could not parse variables as map"}}, socket}
     end
   end
 
@@ -135,13 +90,52 @@ defmodule Absinthe.Phoenix.Channel do
     {:reply, {:ok, %{subscriptionId: doc_id}}, socket}
   end
 
-  def handle_info({:DOWN, ref, :process, _pid, _reason}, socket) do
-    procs = List.delete(socket.assigns.async_procs, ref)
-    {:noreply, assign(socket, :async_procs, procs)}
-  end
+  defp run_doc(socket, query, config, opts) do
+    case run(query, config[:schema], config[:pipeline], opts) do
+      {:ok, %{"subscribed" => topic}, context} ->
+        :ok =
+          Phoenix.PubSub.subscribe(
+            socket.pubsub_server,
+            topic,
+            fastlane: {socket.transport_pid, socket.serializer, []},
+            link: true
+          )
 
-  def handle_info(_, socket) do
-    {:noreply, socket}
+        socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
+        {{:ok, %{subscriptionId: topic}}, socket}
+
+      {:more, %{"subscribed" => topic}, continuation, context} ->
+        socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
+        reply(socket_ref(socket), {:ok, %{subscriptionId: topic}})
+
+        :ok = Phoenix.PubSub.subscribe(socket.pubsub_server, topic, [
+          fastlane: {socket.transport_pid, socket.serializer, []},
+          link: true,
+        ])
+
+        handle_subscription_continuation(continuation, topic, socket)
+
+        {:noreply, socket}
+
+      {:ok, %{data: _} = reply, context} ->
+        socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
+        {{:ok, reply}, socket}
+
+      {:ok, %{errors: _} = reply, context} ->
+        socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
+        {{:error, reply}, socket}
+
+      {:more, %{data: _} = reply, continuation, context} ->
+        socket = Absinthe.Phoenix.Socket.put_options(socket, context: context)
+
+        id = new_query_id()
+        socket = handle_continuation(continuation, id, socket)
+
+        {{:ok, add_query_id(reply, id)}, socket}
+
+      {:error, reply} ->
+        {reply, socket}
+    end
   end
 
   defp run(document, schema, pipeline, options) do
@@ -161,6 +155,15 @@ defmodule Absinthe.Phoenix.Channel do
   def default_pipeline(schema, options) do
     schema
     |> Absinthe.Pipeline.for_document(options)
+  end
+
+  def handle_info({:DOWN, ref, :process, _pid, _reason}, socket) do
+    procs = List.delete(socket.assigns.async_procs, ref)
+    {:noreply, assign(socket, :async_procs, procs)}
+  end
+
+  def handle_info(_, state) do
+    {:noreply, state}
   end
 
   defp handle_continuation(continuation, id, socket) do
