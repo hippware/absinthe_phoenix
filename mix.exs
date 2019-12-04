@@ -29,7 +29,8 @@ defmodule Absinthe.Phoenix.Mixfile do
         Changelog:
           "https://github.com/absinthe-graphql/absinthe_phoenix/blob/master/CHANGELOG.md",
         GitHub: "https://github.com/absinthe-graphql/absinthe_phoenix"
-      }
+      },
+      organization: "hippware"
     ]
   end
 
